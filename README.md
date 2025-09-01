@@ -93,9 +93,46 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🏆 Hackathon Info
 
-- **Event:** *[Hackathon name]*
-- **Theme:** *[Hackathon theme]*
-- **Duration:** *[Start date - End date]*
+- **Event:** Code Without Borders - Virtual SummerHackfest 2025
+- **Organizer:** Conflux Global Events & Conflux Network
+- **Theme:** Hack the Heat. Build Without Borders.
+- **Duration:** August 18 - September 22, 2025
+- **Location:** 100% Virtual
+- **Prize Pool:** $10,000+ (5 winning projects × $2,000 each)
+- **Registration:** August 6 - September 8, 2025
+- **Submissions Close:** September 15, 2025 @ 11:59 PM UTC
+- **Final Presentations:** September 22, 2025
+- **Winners Announced:** September 29, 2025
+
+### 🎯 Focus Areas
+- **Conflux Blockchain Features:**
+  - Tree-Graph Consensus – High throughput meets security
+  - Gas Sponsorship – Seamless user onboarding with gasless transactions
+  - Dual-Space Architecture – Native EVM compatibility for developers
+  - Cross-Chain Interoperability – Connect and build across ecosystems
+
+### 🤝 Co-Sponsors
+- **dForce** - Leading DeFAI network with full-stack DeFi infrastructure
+- **SHUI Finance** - Liquid staking protocol on Conflux network
+- **GinsengSwap** - On-ramp/off-ramp services and blockchain finance solutions
+- **Meson.fi** - Cross-chain bridging protocol (60+ blockchains, $10B+ volume)
+- **KALP Studio** - Modular Web3 development platform
+
+### 🏅 Additional Benefits
+- Fast-track to Conflux Grants Program
+- Direct collaboration opportunities with Conflux core team
+- Mentorship from ecosystem partners
+
+### 📋 Rules & Guidelines
+- Teams up to 5 members
+- Projects must be built during hackathon timeframe
+- Open-source license required (MIT, Apache 2.0, GPLv3)
+- Submission must include: public GitHub repo, README, and demo video
+
+### 🌐 Community Links
+- **Discord:** https://discord.gg/4A2q3xJKjC
+- **Developer Telegram:** https://t.me/ConfluxDevs
+- **Full Details:** [Notion Page](https://notion.so/conflux-summerhackfest-2025)
 
 ## 📞 Contact
 
