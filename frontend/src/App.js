@@ -1,202 +1,334 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { ethers } from 'ethers';
 import './App.css';
+import Header from './components/Header';
+import Footer from './components/Footer';
+import HomePage from './pages/HomePage';
+import ForumPage from './pages/ForumPage';
+import FeaturesPage from './pages/FeaturesPage';
+import walletService from './services/walletService';
+import contractService from './services/contractService';
 
 function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
+  const [userAddress, setUserAddress] = useState('');
+  const [walletType, setWalletType] = useState('');
+  const [showCreatePost, setShowCreatePost] = useState(false);
+  const [newPostContent, setNewPostContent] = useState('');
+  const [isModerator, setIsModerator] = useState(false);
+  const [currentPage, setCurrentPage] = useState('home');
+  const [connectionError, setConnectionError] = useState('');
+  const [showWalletSelection, setShowWalletSelection] = useState(false);
+  const [availableWallets, setAvailableWallets] = useState([]);
+  const [posts, setPosts] = useState([]);
+  const [contractInfo, setContractInfo] = useState(null);
+  const [postStatistics, setPostStatistics] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
   };
 
+  // Initialize wallet service and contract on component mount
+  useEffect(() => {
+    const initializeServices = async () => {
+      const isWalletAvailable = await walletService.initialize();
+      if (isWalletAvailable && walletService.isWalletConnected()) {
+        const account = walletService.getAccount();
+        const walletType = walletService.getWalletType();
+        if (account) {
+          setIsConnected(true);
+          setUserAddress(account);
+          setWalletType(walletType);
+          
+          // Initialize contract service
+          await initializeContract();
+        }
+      }
+      // Set available wallets for selection
+      setAvailableWallets(walletService.getAvailableWallets());
+    };
+
+    initializeServices();
+  }, []);
+
+  // Initialize contract service when wallet connects
+  const initializeContract = async () => {
+    try {
+      if (walletService.isWalletConnected()) {
+        const provider = new ethers.BrowserProvider(walletService.provider);
+        const signer = await provider.getSigner();
+        
+        const result = await contractService.initialize(provider, signer);
+        if (result.success) {
+          // Load contract info and posts
+          await loadContractData();
+        } else {
+          setError('Failed to initialize contract: ' + result.error);
+        }
+      }
+    } catch (error) {
+      console.error('Contract initialization error:', error);
+      setError('Failed to initialize contract');
+    }
+  };
+
+  // Load contract data
+  const loadContractData = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      // Load contract info, statistics, and posts in parallel
+      const [contractInfoResult, statsResult, postsResult] = await Promise.all([
+        contractService.getContractInfo(),
+        contractService.getPostStatistics(),
+        contractService.getTopLevelPosts(0, 10)
+      ]);
+
+      if (contractInfoResult.success) {
+        setContractInfo(contractInfoResult.data);
+      }
+
+      if (statsResult.success) {
+        setPostStatistics(statsResult.data);
+      }
+
+      if (postsResult.success) {
+        setPosts(postsResult.data);
+      }
+
+      // Check if user is moderator
+      if (userAddress) {
+        const moderatorResult = await contractService.isModerator(userAddress);
+        if (moderatorResult.success) {
+          setIsModerator(moderatorResult.data);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading contract data:', error);
+      setError('Failed to load forum data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleConnect = async () => {
+    try {
+      setConnectionError('');
+      setShowWalletSelection(false);
+      
+      if (isConnected) {
+        // Disconnect wallet
+        const result = await walletService.disconnect();
+        if (result.success) {
+          setIsConnected(false);
+          setUserAddress('');
+          setWalletType('');
+        } else {
+          setConnectionError(result.error || 'Failed to disconnect wallet');
+        }
+      } else {
+        // Connect wallet
+        const result = await walletService.connect();
+        if (result.success) {
+          setIsConnected(true);
+          setUserAddress(result.account);
+          setWalletType(result.walletType);
+          
+          // Initialize contract service after wallet connection
+          await initializeContract();
+        } else if (result.needsSelection) {
+          // Show wallet selection modal
+          setShowWalletSelection(true);
+          setAvailableWallets(result.availableWallets);
+        } else {
+          setConnectionError(result.error || 'Failed to connect wallet');
+        }
+      }
+    } catch (error) {
+      console.error('Connection error:', error);
+      setConnectionError('An unexpected error occurred');
+    }
+  };
+
+  const handleWalletSelect = async (walletId) => {
+    try {
+      setConnectionError('');
+      const result = await walletService.connectToWallet(walletId);
+      if (result.success) {
+        setIsConnected(true);
+        setUserAddress(result.account);
+        setWalletType(result.walletType);
+        setShowWalletSelection(false);
+        
+        // Initialize contract service after wallet selection
+        await initializeContract();
+      } else {
+        setConnectionError(result.error || 'Failed to connect to selected wallet');
+      }
+    } catch (error) {
+      console.error('Wallet selection error:', error);
+      setConnectionError('An unexpected error occurred');
+    }
+  };
+
+  const handleCreatePost = async () => {
+    if (newPostContent.trim() && isConnected) {
+      try {
+        setLoading(true);
+        setError('');
+        
+        const result = await contractService.createPost(newPostContent, 0);
+        if (result.success) {
+          setNewPostContent('');
+          setShowCreatePost(false);
+          // Reload posts to show the new one
+          await loadContractData();
+        } else {
+          setError('Failed to create post: ' + result.error);
+        }
+      } catch (error) {
+        console.error('Error creating post:', error);
+        setError('Failed to create post');
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const handleLike = async (postId) => {
+    if (isConnected) {
+      try {
+        setLoading(true);
+        setError('');
+        
+        // Check if user has already liked the post
+        const hasLikedResult = await contractService.hasUserLiked(postId, userAddress);
+        if (hasLikedResult.success) {
+          const liked = !hasLikedResult.data; // Toggle like status
+          const result = await contractService.likePost(postId, liked);
+          if (result.success) {
+            // Reload posts to update like counts
+            await loadContractData();
+          } else {
+            setError('Failed to like post: ' + result.error);
+          }
+        }
+      } catch (error) {
+        console.error('Error liking post:', error);
+        setError('Failed to like post');
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const handleReply = (postId) => {
+    // Here you would open reply modal
+    console.log('Replying to post:', postId);
+  };
+
+  const handleModerate = async (postId) => {
+    if (isConnected && isModerator) {
+      try {
+        setLoading(true);
+        setError('');
+        
+        const result = await contractService.moderatePost(postId);
+        if (result.success) {
+          // Reload posts to reflect moderation
+          await loadContractData();
+        } else {
+          setError('Failed to moderate post: ' + result.error);
+        }
+      } catch (error) {
+        console.error('Error moderating post:', error);
+        setError('Failed to moderate post');
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const navigateToHome = () => {
+    setCurrentPage('home');
+  };
+
+  const navigateToForum = () => {
+    setCurrentPage('forum');
+  };
+
+
+
+  const navigateToFeatures = () => {
+    setCurrentPage('features');
+  };
+
   return (
     <div className="app">
-      {/* Header */}
-      <header className="header">
-        <div className="container">
-          <div className="nav-brand">
-            <h2>🚀 Hackaton Conflux</h2>
-          </div>
-          
-          <nav className={`nav ${isMenuOpen ? 'nav-open' : ''}`}>
-            <ul className="nav-list">
-              <li><a href="#home" className="nav-link">Home</a></li>
-              <li><a href="#features" className="nav-link">Features</a></li>
-              <li><a href="#about" className="nav-link">About</a></li>
-              <li><a href="#contact" className="nav-link">Contact</a></li>
-            </ul>
-          </nav>
+      <Header 
+        isMenuOpen={isMenuOpen}
+        toggleMenu={toggleMenu}
+        isConnected={isConnected}
+        userAddress={userAddress}
+        walletType={walletType}
+        handleConnect={handleConnect}
+        currentPage={currentPage}
+        navigateToHome={navigateToHome}
+        navigateToForum={navigateToForum}
+        navigateToFeatures={navigateToFeatures}
+        connectionError={connectionError}
+        showWalletSelection={showWalletSelection}
+        availableWallets={availableWallets}
+        handleWalletSelect={handleWalletSelect}
+        setShowWalletSelection={setShowWalletSelection}
+      />
 
-          <div className="nav-actions">
-            <button className="btn btn-primary">Get Started</button>
-            <button className="menu-toggle" onClick={toggleMenu}>
-              <span></span>
-              <span></span>
-              <span></span>
-            </button>
-          </div>
-        </div>
-      </header>
 
-      {/* Hero Section */}
-      <section id="home" className="hero">
-        <div className="container">
-          <div className="hero-content">
-            <div className="hero-text">
-              <h1 className="hero-title">
-                Build the Future with 
-                <span className="gradient-text"> Conflux Blockchain</span>
-              </h1>
-              <p className="hero-description">
-                Join us for the Code Without Borders - Virtual SummerHackfest 2025. 
-                Create innovative Web3 solutions using Conflux's powerful blockchain technology.
-              </p>
-              <div className="hero-actions">
-                <button className="btn btn-primary btn-large">Start Building</button>
-                <button className="btn btn-secondary btn-large">Learn More</button>
-              </div>
-              <div className="hero-stats">
-                <div className="stat">
-                  <h3>$10,000+</h3>
-                  <p>Prize Pool</p>
-                </div>
-                <div className="stat">
-                  <h3>4 Weeks</h3>
-                  <p>Duration</p>
-                </div>
-                <div className="stat">
-                  <h3>100%</h3>
-                  <p>Virtual</p>
-                </div>
-              </div>
-            </div>
-            <div className="hero-visual">
-              <div className="blockchain-animation">
-                <div className="block"></div>
-                <div className="block"></div>
-                <div className="block"></div>
-                <div className="block"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
 
-      {/* Features Section */}
-      <section id="features" className="features">
-        <div className="container">
-          <div className="section-header">
-            <h2>Conflux Blockchain Features</h2>
-            <p>Leverage the power of Conflux's cutting-edge technology</p>
-          </div>
-          
-          <div className="features-grid">
-            <div className="feature-card">
-              <div className="feature-icon">⚡</div>
-              <h3 className="feature-title">Tree-Graph Consensus</h3>
-              <p className="feature-description">High throughput meets security with our innovative consensus mechanism</p>
-            </div>
-            <div className="feature-card">
-              <div className="feature-icon">💸</div>
-              <h3 className="feature-title">Gas Sponsorship</h3>
-              <p className="feature-description">Seamless user onboarding with gasless transactions</p>
-            </div>
-            <div className="feature-card">
-              <div className="feature-icon">🔗</div>
-              <h3 className="feature-title">Dual-Space Architecture</h3>
-              <p className="feature-description">Native EVM compatibility for developers</p>
-            </div>
-            <div className="feature-card">
-              <div className="feature-icon">🌐</div>
-              <h3 className="feature-title">Cross-Chain Interoperability</h3>
-              <p className="feature-description">Connect and build across ecosystems</p>
-            </div>
-          </div>
-        </div>
-      </section>
+      {currentPage === 'home' && (
+        <HomePage 
+          isConnected={isConnected}
+          handleConnect={handleConnect}
+          navigateToForum={navigateToForum}
+        />
+      )}
 
-      {/* About Section */}
-      <section id="about" className="about">
-        <div className="container">
-          <div className="about-content">
-            <div className="about-text">
-              <h2>About the Hackathon</h2>
-              <p>
-                Code Without Borders - Virtual SummerHackfest 2025 is a 4-week journey of building, 
-                learning, and global collaboration. Join developers and entrepreneurs from around the 
-                globe to push the boundaries of blockchain innovation with the Conflux Network.
-              </p>
-              <div className="hackathon-details">
-                <div className="detail-item">
-                  <strong>Event:</strong> Code Without Borders - Virtual SummerHackfest 2025
-                </div>
-                <div className="detail-item">
-                  <strong>Duration:</strong> August 18 - September 22, 2025
-                </div>
-                <div className="detail-item">
-                  <strong>Prize Pool:</strong> $10,000+ (5 winning projects × $2,000 each)
-                </div>
-                <div className="detail-item">
-                  <strong>Location:</strong> 100% Virtual
-                </div>
-              </div>
-            </div>
-            <div className="sponsors">
-              <h3>Co-Sponsors</h3>
-              <div className="sponsors-grid">
-                <div className="sponsor">dForce</div>
-                <div className="sponsor">SHUI Finance</div>
-                <div className="sponsor">GinsengSwap</div>
-                <div className="sponsor">Meson.fi</div>
-                <div className="sponsor">KALP Studio</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      {currentPage === 'forum' && (
+        <ForumPage 
+          isConnected={isConnected}
+          isModerator={isModerator}
+          showCreatePost={showCreatePost}
+          setShowCreatePost={setShowCreatePost}
+          newPostContent={newPostContent}
+          setNewPostContent={setNewPostContent}
+          handleCreatePost={handleCreatePost}
+          handleLike={handleLike}
+          handleReply={handleReply}
+          handleModerate={handleModerate}
+          posts={posts}
+          contractInfo={contractInfo}
+          postStatistics={postStatistics}
+          loading={loading}
+          error={error}
+          userAddress={userAddress}
+        />
+      )}
 
-      {/* Footer */}
-      <footer id="contact" className="footer">
-        <div className="container">
-          <div className="footer-content">
-            <div className="footer-section">
-              <h3>🚀 Hackaton Conflux</h3>
-              <p>Building the future of Web3 with Conflux Blockchain technology.</p>
-              <div className="social-links">
-                <a href="https://discord.gg/4A2q3xJKjC" target="_blank" rel="noopener noreferrer">
-                  Discord
-                </a>
-                <a href="https://t.me/ConfluxDevs" target="_blank" rel="noopener noreferrer">
-                  Telegram
-                </a>
-                <a href="https://github.com" target="_blank" rel="noopener noreferrer">
-                  GitHub
-                </a>
-              </div>
-            </div>
-            
-            <div className="footer-section">
-              <h4>Quick Links</h4>
-              <ul>
-                <li><a href="#features">Features</a></li>
-                <li><a href="#about">About</a></li>
-                <li><a href="https://confluxnetwork.org" target="_blank" rel="noopener noreferrer">Conflux Network</a></li>
-                <li><a href="https://docs.confluxnetwork.org" target="_blank" rel="noopener noreferrer">Documentation</a></li>
-              </ul>
-            </div>
-            
-            <div className="footer-section">
-              <h4>Contact</h4>
-              <p>Ready to build the future?</p>
-              <p>Join our community and start coding!</p>
-            </div>
-          </div>
-          
-          <div className="footer-bottom">
-            <p>&copy; 2025 Hackaton Conflux. Built for SummerHackfest 2025.</p>
-            <p>Licensed under MIT License</p>
-          </div>
-        </div>
-      </footer>
+
+
+      {currentPage === 'features' && (
+        <FeaturesPage 
+          isConnected={isConnected}
+          userAddress={userAddress}
+          walletType={walletType}
+        />
+      )}
+
+      <Footer />
     </div>
   );
 }

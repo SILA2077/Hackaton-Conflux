@@ -1,0 +1,63 @@
+/* Simplified Homepage Styles */
+.homepage-main {
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+  background: #000000;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+
+
+/* Hero Section */
+.hero-section {
+  position: relative;
+  z-index: 10;
+  text-align: center;
+  width: 100vw;
+}
+
+.hero-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+/* Hero Title */
+.hero-title {
+  font-size: 6rem;
+  font-weight: 700;
+  color: #000000;
+  text-align: center;
+}
+
+
+
+
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .hero-title {
+    font-size: 4rem;
+  }
+
+
+
+
+}
+
+@media (max-width: 480px) {
+  .hero-title {
+    font-size: 3rem;
+  }
+
+
+
+
+}
