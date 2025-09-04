@@ -16,12 +16,26 @@ class ContractService {
       this.provider = provider;
       this.signer = signer;
       
+      // Verify we're on Conflux eSpace mainnet
+      const network = await provider.getNetwork();
+      const confluxMainnetChainId = 1030; // Conflux eSpace mainnet chain ID in decimal
+      
+      if (Number(network.chainId) !== confluxMainnetChainId) {
+        throw new Error(`Wrong network! Expected Conflux eSpace mainnet (${confluxMainnetChainId}), got ${network.chainId}`);
+      }
+      
       // Create contract instance
       this.contract = new ethers.Contract(
         this.contractAddress,
         this.abi,
         signer
       );
+      
+      console.log('Contract initialized on Conflux eSpace mainnet:', {
+        chainId: network.chainId,
+        name: network.name,
+        contractAddress: this.contractAddress
+      });
       
       return { success: true };
     } catch (error) {
@@ -36,6 +50,22 @@ class ContractService {
       throw new Error('Contract not initialized');
     }
     return this.contract;
+  }
+
+  // Verify we're on Conflux mainnet before transactions
+  async verifyNetwork() {
+    try {
+      const network = await this.provider.getNetwork();
+      const confluxMainnetChainId = 1030; // Conflux eSpace mainnet chain ID in decimal
+      
+      if (Number(network.chainId) !== confluxMainnetChainId) {
+        throw new Error(`Wrong network! Expected Conflux eSpace mainnet (${confluxMainnetChainId}), got ${network.chainId}. Please switch to Conflux eSpace mainnet.`);
+      }
+      
+      return { success: true, network: network };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
   }
 
   // Get contract info
@@ -154,6 +184,12 @@ class ContractService {
   // Create a new post
   async createPost(content, parentId = 0) {
     try {
+      // Verify we're on Conflux mainnet before transaction
+      const networkCheck = await this.verifyNetwork();
+      if (!networkCheck.success) {
+        return { success: false, error: networkCheck.error };
+      }
+      
       const contract = this.getContract();
       const tx = await contract.createPost(content, parentId);
       const receipt = await tx.wait();
@@ -194,6 +230,12 @@ class ContractService {
   // Like or unlike a post
   async likePost(postId, liked) {
     try {
+      // Verify we're on Conflux mainnet before transaction
+      const networkCheck = await this.verifyNetwork();
+      if (!networkCheck.success) {
+        return { success: false, error: networkCheck.error };
+      }
+      
       const contract = this.getContract();
       const tx = await contract.like(postId, liked);
       await tx.wait();
@@ -254,6 +296,12 @@ class ContractService {
   // Moderate a post (only by moderator)
   async moderatePost(postId) {
     try {
+      // Verify we're on Conflux mainnet before transaction
+      const networkCheck = await this.verifyNetwork();
+      if (!networkCheck.success) {
+        return { success: false, error: networkCheck.error };
+      }
+      
       const contract = this.getContract();
       const tx = await contract.moderatePost(postId);
       await tx.wait();

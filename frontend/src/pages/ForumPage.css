@@ -103,6 +103,13 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.03);
   position: relative;
   overflow: hidden;
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
 }
 
 .category-link::before {
@@ -129,6 +136,31 @@
 
 .category-link:hover::before {
   left: 100%;
+}
+
+.category-link:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.category-link:disabled:hover {
+  background: linear-gradient(145deg, #1a1d23 0%, #16181c 100%);
+  color: #71767b;
+  transform: none;
+  box-shadow: 
+    0 2px 4px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  border-color: rgba(47, 51, 54, 0.3);
+}
+
+.category-link.active {
+  background: linear-gradient(145deg, #1d9bf0 0%, #1a8cd8 100%);
+  color: #ffffff;
+  box-shadow: 
+    0 4px 8px rgba(29, 155, 240, 0.2),
+    0 2px 4px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  border-color: rgba(29, 155, 240, 0.5);
 }
 
 /* Contract Info */
@@ -209,6 +241,35 @@
   font-size: 1.1rem;
   line-height: 1.6;
   margin-bottom: 1.5rem;
+}
+
+.network-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.network-badge {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.contract-address {
+  background: rgba(255, 255, 255, 0.1);
+  color: #d1d5db;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-family: 'Courier New', monospace;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 /* Forum Statistics */
@@ -567,5 +628,145 @@
   .post-meta {
     flex-wrap: wrap;
     gap: 0.5rem;
+  }
+}
+
+/* Threaded Replies Styles */
+.replies-section {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(75, 85, 99, 0.3);
+}
+
+.replies-header {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #9ca3af;
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.replies-header::before {
+  content: "💬";
+  font-size: 1rem;
+}
+
+
+.filter-indicator {
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: #9ca3af;
+  margin-left: 0.5rem;
+}
+
+.replies-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-left: 1rem;
+  padding-left: 1rem;
+  border-left: 2px solid rgba(75, 85, 99, 0.2);
+}
+
+.reply-card {
+  background: rgba(31, 41, 55, 0.3);
+  border: 1px solid rgba(75, 85, 99, 0.2);
+  border-radius: 8px;
+  padding: 1rem;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.reply-card:hover {
+  background: rgba(31, 41, 55, 0.4);
+  border-color: rgba(75, 85, 99, 0.3);
+  transform: translateX(4px);
+}
+
+.reply-card::before {
+  content: "";
+  position: absolute;
+  left: -1.5rem;
+  top: 0.75rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  background: #6b7280;
+  border-radius: 50%;
+}
+
+.reply-content {
+  margin-bottom: 0.75rem;
+}
+
+.reply-text {
+  color: #e5e7eb;
+  line-height: 1.6;
+  margin: 0 0 0.5rem 0;
+  font-size: 0.9rem;
+}
+
+.reply-meta {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.75rem;
+  color: #9ca3af;
+  flex-wrap: wrap;
+}
+
+.reply-author {
+  font-weight: 500;
+  color: #60a5fa;
+}
+
+.reply-time {
+  color: #9ca3af;
+}
+
+.reply-id {
+  color: #6b7280;
+  font-family: 'Courier New', monospace;
+}
+
+.reply-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.reply-actions .action-btn {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  min-height: auto;
+}
+
+.reply-actions .action-btn span {
+  font-size: 0.75rem;
+}
+
+/* Mobile responsiveness for replies */
+@media (max-width: 768px) {
+  .replies-list {
+    margin-left: 0.5rem;
+    padding-left: 0.75rem;
+  }
+  
+  .reply-card::before {
+    left: -1rem;
+    width: 0.375rem;
+    height: 0.375rem;
+  }
+  
+  .reply-card:hover {
+    transform: none;
+  }
+  
+  .reply-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
   }
 }

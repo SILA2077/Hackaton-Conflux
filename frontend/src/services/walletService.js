@@ -4,8 +4,42 @@ class WalletService {
     this.account = null;
     this.isConnected = false;
     this.walletType = null;
-    this.networkId = 'testnet'; // Using Conflux testnet
+    this.networkId = 'mainnet'; // Using Conflux mainnet
     this.availableWallets = [];
+    
+    // Conflux network configuration
+    this.confluxConfig = {
+      testnet: {
+        chainId: '0x47', // Conflux eSpace testnet chain ID (71 in decimal)
+        chainName: 'Conflux eSpace Testnet',
+        rpcUrls: [
+          'https://evmtestnet.confluxrpc.com/',
+          'https://evmtest.confluxrpc.com/',
+          'https://evmtestnet.confluxrpc.org/'
+        ],
+        blockExplorerUrls: ['https://evmtestnet.confluxscan.org/'],
+        nativeCurrency: {
+          name: 'CFX',
+          symbol: 'CFX',
+          decimals: 18
+        }
+      },
+      mainnet: {
+        chainId: '0x406', // Conflux eSpace mainnet chain ID (1030 in decimal)
+        chainName: 'Conflux eSpace',
+        rpcUrls: [
+          'https://evm.confluxrpc.com/',
+          'https://evmmain-global.confluxrpc.com/',
+          'https://evm.confluxrpc.org/'
+        ],
+        blockExplorerUrls: ['https://evm.confluxscan.org/'],
+        nativeCurrency: {
+          name: 'CFX',
+          symbol: 'CFX',
+          decimals: 18
+        }
+      }
+    };
   }
 
   // Detect available wallets
@@ -132,6 +166,9 @@ class WalletService {
           method: 'eth_requestAccounts'
         });
       }
+      
+      // Ensure we're on the correct Conflux network
+      await this.ensureConfluxNetwork(wallet.provider);
 
       if (accounts && accounts.length > 0) {
         this.account = accounts[0];
@@ -274,6 +311,46 @@ class WalletService {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   }
 
+  // Ensure we're on the correct Conflux network
+  async ensureConfluxNetwork(provider) {
+    try {
+      const config = this.confluxConfig[this.networkId];
+      
+      // Check current chain ID
+      const currentChainId = await provider.request({
+        method: 'eth_chainId'
+      });
+      
+      if (currentChainId !== config.chainId) {
+        try {
+          // Try to switch to Conflux network
+          await provider.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: config.chainId }]
+          });
+        } catch (switchError) {
+          // If switching fails, try to add the network
+          if (switchError.code === 4902) {
+            await provider.request({
+              method: 'wallet_addEthereumChain',
+              params: [config]
+            });
+          } else {
+            throw switchError;
+          }
+        }
+      }
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Failed to ensure Conflux network:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
   // Switch to Conflux testnet
   async switchToTestnet() {
     try {
@@ -281,20 +358,7 @@ class WalletService {
         throw new Error('No wallet connected');
       }
 
-      if (this.walletType === 'fluent') {
-        await this.provider.request({
-          method: 'wallet_switchEthereumChain',
-          params: [{ chainId: '0x1' }] // Conflux testnet chain ID
-        });
-      } else {
-        // For other wallets, try to switch to Conflux testnet
-        await this.provider.request({
-          method: 'wallet_switchEthereumChain',
-          params: [{ chainId: '0x1' }] // Conflux testnet chain ID
-        });
-      }
-
-      return { success: true };
+      return await this.ensureConfluxNetwork(this.provider);
     } catch (error) {
       console.error('Failed to switch network:', error);
       return {

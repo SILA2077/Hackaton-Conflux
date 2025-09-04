@@ -13,7 +13,9 @@ function Header({
   navigateToHome, 
   navigateToForum, 
   navigateToFeatures, 
+  navigateToProfile,
   connectionError,
+  username,
   showWalletSelection,
   availableWallets,
   handleWalletSelect,
@@ -31,6 +33,9 @@ function Header({
             <li><a href="#" className={`nav-link ${currentPage === 'home' ? 'active' : ''}`} onClick={navigateToHome}>Home</a></li>
             <li><a href="#" className={`nav-link ${currentPage === 'forum' ? 'active' : ''}`} onClick={navigateToForum}>Forum</a></li>
             <li><a href="#" className={`nav-link ${currentPage === 'features' ? 'active' : ''}`} onClick={navigateToFeatures}>Features</a></li>
+            {isConnected && (
+              <li><a href="#" className={`nav-link ${currentPage === 'profile' ? 'active' : ''}`} onClick={navigateToProfile}>Profile</a></li>
+            )}
           </ul>
         </nav>
 
@@ -43,7 +48,7 @@ function Header({
           {isConnected ? (
             <div className="user-info">
               <span className="user-address" title={`${walletType}: ${userAddress}`}>
-                {walletService.formatAddress(userAddress)}
+                {username ? `@${username}` : walletService.formatAddress(userAddress)}
               </span>
               <button className="btn btn-secondary" onClick={handleConnect}>Disconnect</button>
             </div>
