@@ -8,9 +8,9 @@ import HomePage from './pages/HomePage';
 import ForumPage from './pages/ForumPage';
 import FeaturesPage from './pages/FeaturesPage';
 import UserProfilePage from './pages/UserProfilePage';
+import ModeratorPage from './pages/ModeratorPage';
 import walletService from './services/walletService';
 import contractService from './services/contractService';
-import usernameService from './services/usernameService';
 
 function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -35,9 +35,6 @@ function App() {
   const [replyContent, setReplyContent] = useState('');
   const [userReplies, setUserReplies] = useState([]);
   const [likedPosts, setLikedPosts] = useState([]);
-  const [username, setUsername] = useState('');
-  const [showUsernameModal, setShowUsernameModal] = useState(false);
-  const [newUsername, setNewUsername] = useState('');
   const [transactionStatus, setTransactionStatus] = useState(null);
   const [showTransactionModal, setShowTransactionModal] = useState(false);
 
@@ -57,9 +54,6 @@ function App() {
           setUserAddress(account);
           setWalletType(walletType);
           
-          // Load username
-          loadUsername(account);
-          
           // Initialize contract service
           await initializeContract();
         }
@@ -71,12 +65,17 @@ function App() {
     initializeServices();
   }, []);
 
-  // Load username when user address changes
+  // Periodically check moderator status when connected
   useEffect(() => {
-    if (userAddress) {
-      loadUsername(userAddress);
-    }
-  }, [userAddress]);
+    if (!isConnected || !userAddress || !contractService.contract) return;
+
+    const interval = setInterval(() => {
+      checkModeratorStatus();
+    }, 30000); // Check every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [isConnected, userAddress, contractService.contract]);
+
 
   // Initialize contract service when wallet connects
   const initializeContract = async () => {
@@ -152,18 +151,32 @@ function App() {
       }
 
       // Check if user is moderator and fetch user-specific data
-      if (userAddress) {
-        const moderatorResult = await contractService.isModerator(userAddress);
-        if (moderatorResult.success) {
-          setIsModerator(moderatorResult.data);
+      if (userAddress && contractService.contract) {
+        try {
+          console.log('Checking moderator status for:', userAddress);
+          const moderatorResult = await contractService.isModerator(userAddress);
+          
+          if (moderatorResult.success) {
+            console.log('Moderator status:', moderatorResult.data);
+            setIsModerator(moderatorResult.data);
+          } else {
+            console.error('Failed to check moderator status:', moderatorResult.error);
+            setIsModerator(false);
+          }
+        } catch (error) {
+          console.error('Error checking moderator status:', error);
+          setIsModerator(false);
         }
-        
-        // Fetch user's replies and liked posts
-        await Promise.all([
-          fetchUserReplies(),
-          fetchLikedPosts()
-        ]);
+      } else {
+        console.log('Cannot check moderator status - missing user address or contract');
+        setIsModerator(false);
       }
+        
+      // Fetch user's replies and liked posts
+      await Promise.all([
+        fetchUserReplies(),
+        fetchLikedPosts()
+      ]);
     } catch (error) {
       console.error('Error loading contract data:', error);
       setError('Failed to load forum data');
@@ -197,6 +210,11 @@ function App() {
           
           // Initialize contract service after wallet connection
           await initializeContract();
+          
+          // Check moderator status after contract initialization
+          if (contractService.contract) {
+            await checkModeratorStatus();
+          }
         } else if (result.needsSelection) {
           // Show wallet selection modal
           setShowWalletSelection(true);
@@ -223,6 +241,11 @@ function App() {
         
         // Initialize contract service after wallet selection
         await initializeContract();
+        
+        // Check moderator status after contract initialization
+        if (contractService.contract) {
+          await checkModeratorStatus();
+        }
       } else {
         setConnectionError(result.error || 'Failed to connect to selected wallet');
       }
@@ -249,28 +272,25 @@ function App() {
           // Reload posts to show the new one
           await loadContractData();
           
-          // Hide transaction modal after success
-          setTimeout(() => {
-            hideTransaction();
-          }, 2000);
+          // Refresh all sidebar data
+          await refreshSidebarData();
+          
+          // Auto-dismiss toast after success
+          autoDismissToast(2000);
         } else {
           updateTransactionStatus('error', 'Failed to create post: ' + result.error);
           setError('Failed to create post: ' + result.error);
           
-          // Hide transaction modal after error
-          setTimeout(() => {
-            hideTransaction();
-          }, 3000);
+          // Auto-dismiss toast after error
+          autoDismissToast(4000);
         }
       } catch (error) {
         console.error('Error creating post:', error);
         updateTransactionStatus('error', 'Failed to create post');
         setError('Failed to create post');
         
-        // Hide transaction modal after error
-        setTimeout(() => {
-          hideTransaction();
-        }, 3000);
+        // Auto-dismiss toast after error
+        autoDismissToast(4000);
       } finally {
         setLoading(false);
       }
@@ -296,18 +316,17 @@ function App() {
             // Reload posts to update like counts
             await loadContractData();
             
-            // Hide transaction modal after success
-            setTimeout(() => {
-              hideTransaction();
-            }, 1500);
+            // Refresh all sidebar data
+            await refreshSidebarData();
+            
+            // Auto-dismiss toast after success
+            autoDismissToast(1500);
           } else {
             updateTransactionStatus('error', 'Failed to like post: ' + result.error);
             setError('Failed to like post: ' + result.error);
             
-            // Hide transaction modal after error
-            setTimeout(() => {
-              hideTransaction();
-            }, 3000);
+            // Auto-dismiss toast after error
+            autoDismissToast(3000);
           }
         }
       } catch (error) {
@@ -315,10 +334,8 @@ function App() {
         updateTransactionStatus('error', 'Failed to like post');
         setError('Failed to like post');
         
-        // Hide transaction modal after error
-        setTimeout(() => {
-          hideTransaction();
-        }, 3000);
+        // Auto-dismiss toast after error
+        autoDismissToast(3000);
       } finally {
         setLoading(false);
       }
@@ -351,28 +368,25 @@ function App() {
           // Reload posts and replies to show the new reply
           await loadContractData();
           
-          // Hide transaction modal after success
-          setTimeout(() => {
-            hideTransaction();
-          }, 2000);
+          // Refresh all sidebar data
+          await refreshSidebarData();
+          
+          // Auto-dismiss toast after success
+          autoDismissToast(2000);
         } else {
           updateTransactionStatus('error', 'Failed to create reply: ' + result.error);
           setError('Failed to create reply: ' + result.error);
           
-          // Hide transaction modal after error
-          setTimeout(() => {
-            hideTransaction();
-          }, 3000);
+          // Auto-dismiss toast after error
+          autoDismissToast(4000);
         }
       } catch (error) {
         console.error('Error creating reply:', error);
         updateTransactionStatus('error', 'Failed to create reply');
         setError('Failed to create reply');
         
-        // Hide transaction modal after error
-        setTimeout(() => {
-          hideTransaction();
-        }, 3000);
+        // Auto-dismiss toast after error
+        autoDismissToast(4000);
       } finally {
         setLoading(false);
       }
@@ -381,10 +395,10 @@ function App() {
 
   // Fetch user's replies
   const fetchUserReplies = async () => {
-    if (!userAddress) return;
+    if (!userAddress || !contractService) return;
     
     try {
-      const result = await contractService.getPostsByAuthor(userAddress, 0, 50);
+      const result = await contractService.getPostsByAuthor(userAddress, 0, 100);
       if (result.success) {
         // Filter only replies (posts with parentId > 0)
         const userRepliesData = result.data.filter(post => post.parentId !== '0');
@@ -395,23 +409,48 @@ function App() {
     }
   };
 
-  // Fetch user's liked posts
+  // Fetch user's liked posts and replies
   const fetchLikedPosts = async () => {
-    if (!userAddress) return;
+    if (!userAddress || !contractService) return;
     
     try {
-      // Get all posts and check which ones the user has liked
-      const allPosts = [...posts];
-      const likedPostsData = [];
+      // Get all posts from the contract (not just the current page)
+      const allPostsResult = await contractService.getTopLevelPosts(0, 100);
+      if (!allPostsResult.success) {
+        console.error('Failed to fetch posts for liked posts check');
+        return;
+      }
       
+      const allPosts = allPostsResult.data;
+      const likedContentData = [];
+      
+      // Check which posts the user has liked
       for (const post of allPosts) {
         const hasLikedResult = await contractService.hasUserLiked(post.id, userAddress);
         if (hasLikedResult.success && hasLikedResult.data) {
-          likedPostsData.push(post);
+          likedContentData.push({
+            ...post,
+            contentType: 'post'
+          });
+        }
+        
+        // Also check replies for this post
+        const repliesResult = await contractService.getReplies(post.id);
+        if (repliesResult.success) {
+          for (const reply of repliesResult.data) {
+            const hasLikedReplyResult = await contractService.hasUserLiked(reply.id, userAddress);
+            if (hasLikedReplyResult.success && hasLikedReplyResult.data) {
+              likedContentData.push({
+                ...reply,
+                contentType: 'reply',
+                parentPostId: post.id
+              });
+            }
+          }
         }
       }
       
-      setLikedPosts(likedPostsData);
+      setLikedPosts(likedContentData);
     } catch (error) {
       console.error('Error fetching liked posts:', error);
     }
@@ -448,28 +487,25 @@ function App() {
           // Reload posts to reflect moderation
           await loadContractData();
           
-          // Hide transaction modal after success
-          setTimeout(() => {
-            hideTransaction();
-          }, 2000);
+          // Refresh all sidebar data
+          await refreshSidebarData();
+          
+          // Auto-dismiss toast after success
+          autoDismissToast(2000);
         } else {
           updateTransactionStatus('error', 'Failed to moderate post: ' + result.error);
           setError('Failed to moderate post: ' + result.error);
           
-          // Hide transaction modal after error
-          setTimeout(() => {
-            hideTransaction();
-          }, 3000);
+          // Auto-dismiss toast after error
+          autoDismissToast(4000);
         }
       } catch (error) {
         console.error('Error moderating post:', error);
         updateTransactionStatus('error', 'Failed to moderate post');
         setError('Failed to moderate post');
         
-        // Hide transaction modal after error
-        setTimeout(() => {
-          hideTransaction();
-        }, 3000);
+        // Auto-dismiss toast after error
+        autoDismissToast(4000);
       } finally {
         setLoading(false);
       }
@@ -494,41 +530,10 @@ function App() {
     setCurrentPage('profile');
   };
 
-  // Username functions
-  const loadUsername = (address) => {
-    const storedUsername = usernameService.getUsername(address);
-    setUsername(storedUsername || '');
+  const navigateToModerator = () => {
+    setCurrentPage('moderator');
   };
 
-  const handleSetUsername = () => {
-    if (newUsername.trim() && userAddress) {
-      const validation = usernameService.validateUsername(newUsername);
-      if (!validation.valid) {
-        setError(validation.error);
-        return;
-      }
-
-      if (!usernameService.isUsernameAvailable(newUsername, userAddress)) {
-        setError('Username is already taken');
-        return;
-      }
-
-      const success = usernameService.setUsername(userAddress, newUsername);
-      if (success) {
-        setUsername(newUsername);
-        setNewUsername('');
-        setShowUsernameModal(false);
-        setError('');
-      } else {
-        setError('Failed to set username');
-      }
-    }
-  };
-
-  const handleEditUsername = () => {
-    setNewUsername(username);
-    setShowUsernameModal(true);
-  };
 
   // Transaction status functions
   const showTransaction = (type, message) => {
@@ -555,6 +560,66 @@ function App() {
     }, 300);
   };
 
+  // Auto-dismiss toast after a delay
+  const autoDismissToast = (delay = 3000) => {
+    setTimeout(() => {
+      hideTransaction();
+    }, delay);
+  };
+
+  // Check moderator status
+  const checkModeratorStatus = async () => {
+    if (!userAddress || !contractService.contract) {
+      setIsModerator(false);
+      return;
+    }
+
+    try {
+      const moderatorResult = await contractService.isModerator(userAddress);
+      if (moderatorResult.success) {
+        setIsModerator(moderatorResult.data);
+      } else {
+        console.error('Failed to check moderator status:', moderatorResult.error);
+        setIsModerator(false);
+      }
+    } catch (error) {
+      console.error('Error checking moderator status:', error);
+      setIsModerator(false);
+    }
+  };
+
+  // Refresh all sidebar data
+  const refreshSidebarData = async () => {
+    if (!userAddress || !contractService) return;
+    
+    try {
+      // Refresh contract info and statistics
+      const [contractInfoResult, statsResult] = await Promise.all([
+        contractService.getContractInfo(),
+        contractService.getPostStatistics()
+      ]);
+
+      if (contractInfoResult.success) {
+        setContractInfo(contractInfoResult.data);
+      }
+
+      if (statsResult.success) {
+        setPostStatistics(statsResult.data);
+      }
+
+      // Refresh moderator status
+      await checkModeratorStatus();
+
+      // Refresh user-specific data
+      await Promise.all([
+        fetchUserReplies(),
+        fetchLikedPosts()
+      ]);
+    } catch (error) {
+      console.error('Error refreshing sidebar data:', error);
+    }
+  };
+
   return (
     <div className="app">
       <Header 
@@ -569,8 +634,9 @@ function App() {
         navigateToForum={navigateToForum}
         navigateToFeatures={navigateToFeatures}
         navigateToProfile={navigateToProfile}
+        navigateToModerator={navigateToModerator}
+        isModerator={isModerator}
         connectionError={connectionError}
-        username={username}
         showWalletSelection={showWalletSelection}
         availableWallets={availableWallets}
         handleWalletSelect={handleWalletSelect}
@@ -587,40 +653,40 @@ function App() {
         />
       )}
 
-      {currentPage === 'forum' && (
-        <ForumPage 
-          isConnected={isConnected}
-          isModerator={isModerator}
-          showCreatePost={showCreatePost}
-          setShowCreatePost={setShowCreatePost}
-          newPostContent={newPostContent}
-          setNewPostContent={setNewPostContent}
-          handleCreatePost={handleCreatePost}
-          handleLike={handleLike}
-          handleReply={handleReply}
-          handleModerate={handleModerate}
-          posts={posts}
-          replies={replies}
-          contractInfo={contractInfo}
-          postStatistics={postStatistics}
-          loading={loading}
-          error={error}
-          userAddress={userAddress}
-          showReplyModal={showReplyModal}
-          setShowReplyModal={setShowReplyModal}
-          replyToPost={replyToPost}
-          replyContent={replyContent}
-          setReplyContent={setReplyContent}
-          handleCreateReply={handleCreateReply}
-                  userReplies={userReplies}
-        likedPosts={likedPosts}
-        fetchUserReplies={fetchUserReplies}
-        fetchLikedPosts={fetchLikedPosts}
-        navigateToProfile={navigateToProfile}
-        username={username}
-        handleEditUsername={handleEditUsername}
-        />
-      )}
+             {currentPage === 'forum' && (
+         <ForumPage 
+           isConnected={isConnected}
+           isModerator={isModerator}
+           showCreatePost={showCreatePost}
+           setShowCreatePost={setShowCreatePost}
+           newPostContent={newPostContent}
+           setNewPostContent={setNewPostContent}
+           handleCreatePost={handleCreatePost}
+           handleLike={handleLike}
+           handleReply={handleReply}
+           handleModerate={handleModerate}
+           posts={posts}
+           replies={replies}
+           contractInfo={contractInfo}
+           postStatistics={postStatistics}
+           loading={loading}
+           error={error}
+           userAddress={userAddress}
+           showReplyModal={showReplyModal}
+           setShowReplyModal={setShowReplyModal}
+           replyToPost={replyToPost}
+           replyContent={replyContent}
+           setReplyContent={setReplyContent}
+           handleCreateReply={handleCreateReply}
+           userReplies={userReplies}
+           likedPosts={likedPosts}
+           fetchUserReplies={fetchUserReplies}
+           fetchLikedPosts={fetchLikedPosts}
+           refreshSidebarData={refreshSidebarData}
+           navigateToProfile={navigateToProfile}
+           contractService={contractService}
+         />
+       )}
 
 
 
@@ -632,105 +698,68 @@ function App() {
         />
       )}
 
-      {currentPage === 'profile' && (
-        <UserProfilePage 
+             {currentPage === 'profile' && (
+         <UserProfilePage 
+           isConnected={isConnected}
+           userAddress={userAddress}
+           userReplies={userReplies}
+           likedPosts={likedPosts}
+           fetchUserReplies={fetchUserReplies}
+           fetchLikedPosts={fetchLikedPosts}
+           fetchUserPosts={fetchUserPosts}
+           refreshSidebarData={refreshSidebarData}
+           handleLike={handleLike}
+           handleModerate={handleModerate}
+           isModerator={isModerator}
+           loading={loading}
+           error={error}
+           contractService={contractService}
+         />
+       )}
+
+      {currentPage === 'moderator' && (
+        <ModeratorPage 
           isConnected={isConnected}
-          userAddress={userAddress}
-          userReplies={userReplies}
-          likedPosts={likedPosts}
-          fetchUserReplies={fetchUserReplies}
-          fetchLikedPosts={fetchLikedPosts}
-          fetchUserPosts={fetchUserPosts}
-          handleLike={handleLike}
-          handleModerate={handleModerate}
           isModerator={isModerator}
+          userAddress={userAddress}
+          contractService={contractService}
           loading={loading}
           error={error}
-          username={username}
-          handleEditUsername={handleEditUsername}
+          handleModerate={handleModerate}
+          posts={posts}
+          replies={replies}
+          refreshSidebarData={refreshSidebarData}
         />
       )}
 
       <Footer />
 
-      {/* Username Modal */}
-      {showUsernameModal && (
-        <div className="modal-overlay" onClick={() => setShowUsernameModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>{username ? 'Edit Username' : 'Set Username'}</h2>
-              <button className="modal-close" onClick={() => setShowUsernameModal(false)}>×</button>
-            </div>
-            <div className="modal-body">
-              <p className="modal-description">
-                Choose a unique username to display in the forum. This will be stored locally on your device.
-              </p>
-              <input
-                type="text"
-                className="username-input"
-                placeholder="Enter your username"
-                value={newUsername}
-                onChange={(e) => setNewUsername(e.target.value)}
-                maxLength={20}
-                autoFocus
-              />
-              <div className="username-rules">
-                <p>Username rules:</p>
-                <ul>
-                  <li>2-20 characters long</li>
-                  <li>Letters, numbers, hyphens, and underscores only</li>
-                  <li>Must be unique</li>
-                </ul>
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setShowUsernameModal(false)}>
-                Cancel
-              </button>
-              <button 
-                className="btn btn-primary" 
-                onClick={handleSetUsername}
-                disabled={!newUsername.trim()}
-              >
-                {username ? 'Update Username' : 'Set Username'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* Transaction Status Modal */}
+      {/* Transaction Status Toast */}
       {showTransactionModal && transactionStatus && (
-        <div className="modal-overlay">
-          <div className="transaction-modal">
-            <div className="transaction-content">
-              <div className="transaction-icon">
-                {transactionStatus.status === 'pending' && (
-                  <div className="spinner"></div>
-                )}
-                {transactionStatus.status === 'confirming' && (
-                  <div className="spinner"></div>
-                )}
-                {transactionStatus.status === 'success' && (
-                  <div className="success-icon">✓</div>
-                )}
-                {transactionStatus.status === 'error' && (
-                  <div className="error-icon">✕</div>
-                )}
-              </div>
-              <h3 className="transaction-title">
-                {transactionStatus.type === 'post' && 'Creating Post'}
-                {transactionStatus.type === 'reply' && 'Posting Reply'}
-                {transactionStatus.type === 'like' && 'Processing Like'}
-                {transactionStatus.type === 'moderate' && 'Moderating Post'}
-              </h3>
-              <p className="transaction-message">{transactionStatus.message}</p>
-              {transactionStatus.status === 'error' && (
-                <button className="btn btn-primary" onClick={hideTransaction}>
-                  Close
-                </button>
-              )}
-            </div>
+        <div className="transaction-toast show">
+          <div className="transaction-icon">
+            {transactionStatus.status === 'pending' && (
+              <div className="spinner"></div>
+            )}
+            {transactionStatus.status === 'confirming' && (
+              <div className="spinner"></div>
+            )}
+            {transactionStatus.status === 'success' && (
+              <div className="success-icon">✓</div>
+            )}
+            {transactionStatus.status === 'error' && (
+              <div className="error-icon">✕</div>
+            )}
+          </div>
+          <div className="transaction-content">
+            <h3 className="transaction-title">
+              {transactionStatus.type === 'post' && 'Creating Post'}
+              {transactionStatus.type === 'reply' && 'Posting Reply'}
+              {transactionStatus.type === 'like' && 'Processing Like'}
+              {transactionStatus.type === 'moderate' && 'Moderating Post'}
+            </h3>
+            <p className="transaction-message">{transactionStatus.message}</p>
           </div>
         </div>
       )}

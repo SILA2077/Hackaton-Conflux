@@ -14,8 +14,9 @@ function Header({
   navigateToForum, 
   navigateToFeatures, 
   navigateToProfile,
+  navigateToModerator,
+  isModerator,
   connectionError,
-  username,
   showWalletSelection,
   availableWallets,
   handleWalletSelect,
@@ -25,7 +26,7 @@ function Header({
     <header className="header">
       <div className="container">
         <div className="nav-brand">
-          <h2>🚀 Forlux</h2>
+          <h2 data-text="FORLUX" onClick={navigateToHome} style={{cursor: 'pointer'}}>FORLUX</h2>
         </div>
         
         <nav className={`nav ${isMenuOpen ? 'nav-open' : ''}`}>
@@ -36,10 +37,28 @@ function Header({
             {isConnected && (
               <li><a href="#" className={`nav-link ${currentPage === 'profile' ? 'active' : ''}`} onClick={navigateToProfile}>Profile</a></li>
             )}
+            {isConnected && isModerator && (
+              <li><a href="#" className={`nav-link moderator-link ${currentPage === 'moderator' ? 'active' : ''}`} onClick={navigateToModerator}>🛡️ Moderator</a></li>
+            )}
           </ul>
         </nav>
 
         <div className="nav-actions">
+          {/* Debug: Show moderator status */}
+          {isConnected && (
+            <div style={{ 
+              fontSize: '0.75rem', 
+              color: isModerator ? '#86efac' : '#fca5a5', 
+              marginRight: '1rem',
+              padding: '0.25rem 0.5rem',
+              background: 'rgba(31, 41, 55, 0.3)',
+              borderRadius: '4px',
+              border: `1px solid ${isModerator ? 'rgba(34, 197, 94, 0.3)' : 'rgba(220, 38, 38, 0.3)'}`
+            }}>
+              {isModerator ? '✅ Moderator' : '❌ Not Moderator'}
+            </div>
+          )}
+          
           {connectionError && (
             <div className="error-message">
               <span className="error-text">{connectionError}</span>
@@ -48,7 +67,7 @@ function Header({
           {isConnected ? (
             <div className="user-info">
               <span className="user-address" title={`${walletType}: ${userAddress}`}>
-                {username ? `@${username}` : walletService.formatAddress(userAddress)}
+                {walletService.formatAddress(userAddress)}
               </span>
               <button className="btn btn-secondary" onClick={handleConnect}>Disconnect</button>
             </div>

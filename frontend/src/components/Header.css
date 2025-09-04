@@ -78,6 +78,30 @@
   color: #ffffff;
 }
 
+.moderator-link {
+  background: linear-gradient(135deg, #ff6b6b, #ffa500);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 600;
+  position: relative;
+}
+
+.moderator-link:hover {
+  background: linear-gradient(135deg, #ff5252, #ff9800);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.moderator-link.active {
+  background: linear-gradient(135deg, #ff4444, #ff8c00);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 700;
+}
+
 .nav-actions {
   display: flex;
   align-items: center;

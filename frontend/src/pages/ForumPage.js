@@ -1,6 +1,27 @@
 import React, { useState } from 'react';
 import './ForumPage.css';
-import usernameService from '../services/usernameService';
+import walletService from '../services/walletService';
+
+// Helper function to create author display with moderator indicator
+const AuthorDisplay = ({ author, moderatorStatus, contractService }) => {
+  const displayName = walletService.formatAddress(author);
+  const isModerator = moderatorStatus[author] || false;
+  const defaultAvatar = walletService.getDefaultAvatar(author);
+  
+  return (
+    <span className="author-with-moderator">
+      <span className="author-avatar">
+        <span className="author-default-avatar">{defaultAvatar}</span>
+      </span>
+      <span className="author-name">@{displayName}</span>
+      {isModerator && (
+        <span className="moderator-indicator" title="Moderator">
+          🛡️
+        </span>
+      )}
+    </span>
+  );
+};
 
 function ForumPage({ 
   isConnected, 
@@ -30,11 +51,49 @@ function ForumPage({
   likedPosts,
   fetchUserReplies,
   fetchLikedPosts,
-  navigateToProfile
+  navigateToProfile,
+  contractService
 }) {
   // State for sidebar features
   const [showUserPostsOnly, setShowUserPostsOnly] = useState(false);
   const [filteredPosts, setFilteredPosts] = useState([]);
+  const [moderatorStatus, setModeratorStatus] = useState({});
+
+  // Check moderator status for all unique authors
+  React.useEffect(() => {
+    const checkModeratorStatus = async () => {
+      if (!contractService) return;
+      
+      const allAuthors = new Set();
+      
+      // Collect all unique authors from posts
+      posts.forEach(post => allAuthors.add(post.author));
+      
+      // Collect all unique authors from replies
+      Object.values(replies).forEach(replyList => {
+        replyList.forEach(reply => allAuthors.add(reply.author));
+      });
+      
+      const status = {};
+      
+      // Check moderator status for each author
+      for (const author of allAuthors) {
+        try {
+          const result = await contractService.isModerator(author);
+          if (result.success) {
+            status[author] = result.data;
+          }
+        } catch (error) {
+          console.error(`Error checking moderator status for ${author}:`, error);
+          status[author] = false;
+        }
+      }
+      
+      setModeratorStatus(status);
+    };
+    
+    checkModeratorStatus();
+  }, [posts, replies, contractService]);
 
   // Filter posts based on user selection
   React.useEffect(() => {
@@ -74,6 +133,43 @@ function ForumPage({
 
   const handleUserPosts = () => {
     setShowUserPostsOnly(!showUserPostsOnly);
+  };
+
+  const handleShare = (postId) => {
+    const postUrl = `${window.location.origin}${window.location.pathname}#post-${postId}`;
+    
+    if (navigator.share) {
+      // Use native share API if available
+      navigator.share({
+        title: `Post #${postId}`,
+        text: `Check out this post on the Conflux Forum`,
+        url: postUrl
+      }).catch(err => {
+        console.log('Error sharing:', err);
+        fallbackShare(postUrl, postId);
+      });
+    } else {
+      // Fallback to clipboard
+      fallbackShare(postUrl, postId);
+    }
+  };
+
+  const fallbackShare = (url, postId) => {
+    navigator.clipboard.writeText(url).then(() => {
+      // Show a temporary success message
+      const originalText = '🔗';
+      const button = document.querySelector(`[data-post-id="${postId}"] .share-btn span`);
+      if (button) {
+        button.textContent = '✓';
+        setTimeout(() => {
+          button.textContent = originalText;
+        }, 2000);
+      }
+    }).catch(err => {
+      console.error('Failed to copy to clipboard:', err);
+      // Show error message
+      alert('Failed to copy link to clipboard');
+    });
   };
 
   const handleStatistics = () => {
@@ -255,7 +351,7 @@ function ForumPage({
               ) : (
                 <div className="posts-list">
                   {filteredPosts.map((post) => (
-                    <div key={post.id} className="post-card">
+                    <div key={post.id} className="post-card" data-post-id={post.id}>
                       <div className="post-header">
                         <h3 className="post-title">
                           {post.content.length > 100 
@@ -279,7 +375,11 @@ function ForumPage({
                           >
                             <span>💬</span> {replies[post.id] ? replies[post.id].length : 0}
                           </button>
-                          <button className="action-btn share-btn" title="Share">
+                          <button 
+                            className="action-btn share-btn" 
+                            title="Share"
+                            onClick={() => handleShare(post.id)}
+                          >
                             <span>🔗</span>
                           </button>
                           {isModerator && (
@@ -296,7 +396,11 @@ function ForumPage({
                       <p className="post-preview">{post.content}</p>
                       <div className="post-meta">
                         <span className="post-author">
-                          @{usernameService.getDisplayName(post.author)}
+                          <AuthorDisplay 
+                            author={post.author} 
+                            moderatorStatus={moderatorStatus}
+                            contractService={contractService}
+                          />
                         </span>
                         <span className="post-time">
                           {new Date(post.createdAt).toLocaleDateString()} at {new Date(post.createdAt).toLocaleTimeString()}
@@ -317,7 +421,11 @@ function ForumPage({
                                   <p className="reply-text">{reply.content}</p>
                                   <div className="reply-meta">
                                     <span className="reply-author">
-                                      @{usernameService.getDisplayName(reply.author)}
+                                      <AuthorDisplay 
+                                        author={reply.author} 
+                                        moderatorStatus={moderatorStatus}
+                                        contractService={contractService}
+                                      />
                                     </span>
                                     <span className="reply-time">
                                       {new Date(reply.createdAt).toLocaleDateString()} at {new Date(reply.createdAt).toLocaleTimeString()}

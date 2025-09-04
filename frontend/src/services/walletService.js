@@ -311,6 +311,17 @@ class WalletService {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   }
 
+  // Generate default avatar from address
+  getDefaultAvatar(address) {
+    if (!address) return '👤';
+    
+    // Use the last character of the address to determine avatar
+    const lastChar = address.slice(-1).toLowerCase();
+    const avatars = ['👤', '👨', '👩', '🧑', '👦', '👧', '👴', '👵', '👶', '🧒', '👱', '👲', '👳', '👮', '👷', '💂'];
+    const index = parseInt(lastChar, 16) % avatars.length;
+    return avatars[index];
+  }
+
   // Ensure we're on the correct Conflux network
   async ensureConfluxNetwork(provider) {
     try {

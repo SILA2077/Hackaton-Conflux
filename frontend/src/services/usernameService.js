@@ -172,6 +172,80 @@ class UsernameService {
       return false;
     }
   }
+
+  // Get display name with moderator indicator
+  getDisplayNameWithModerator(address, isModerator = false) {
+    if (!address) return 'Unknown User';
+    
+    const username = this.getUsername(address);
+    const displayName = username || `${address.slice(0, 6)}...${address.slice(-4)}`;
+    
+    return {
+      name: displayName,
+      isModerator: isModerator
+    };
+  }
+
+  // Create moderator indicator JSX
+  createModeratorIndicator() {
+    return (
+      <span className="moderator-indicator" title="Moderator">
+        🛡️
+      </span>
+    );
+  }
+
+  // Profile Picture Management
+  setProfilePicture(address, imageData) {
+    if (!address) return false;
+    try {
+      const key = `profile_picture_${address.toLowerCase()}`;
+      localStorage.setItem(key, imageData);
+      return true;
+    } catch (error) {
+      console.error('Error saving profile picture:', error);
+      return false;
+    }
+  }
+
+  getProfilePicture(address) {
+    if (!address) return null;
+    try {
+      const key = `profile_picture_${address.toLowerCase()}`;
+      return localStorage.getItem(key);
+    } catch (error) {
+      console.error('Error getting profile picture:', error);
+      return null;
+    }
+  }
+
+  removeProfilePicture(address) {
+    if (!address) return false;
+    try {
+      const key = `profile_picture_${address.toLowerCase()}`;
+      localStorage.removeItem(key);
+      return true;
+    } catch (error) {
+      console.error('Error removing profile picture:', error);
+      return false;
+    }
+  }
+
+  // Get default avatar based on address
+  getDefaultAvatar(address) {
+    if (!address) return '👤';
+    
+    // Generate a consistent emoji based on address
+    const addressHash = address.split('').reduce((a, b) => {
+      a = ((a << 5) - a) + b.charCodeAt(0);
+      return a & a;
+    }, 0);
+    
+    const avatars = ['👤', '👨', '👩', '🧑', '👨‍💻', '👩‍💻', '🧑‍💻', '👨‍🎨', '👩‍🎨', '🧑‍🎨'];
+    const avatarIndex = Math.abs(addressHash) % avatars.length;
+    
+    return avatars[avatarIndex];
+  }
 }
 
 // Create singleton instance
