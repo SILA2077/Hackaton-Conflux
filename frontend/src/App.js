@@ -6,7 +6,6 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import HomePage from './pages/HomePage';
 import ForumPage from './pages/ForumPage';
-import FeaturesPage from './pages/FeaturesPage';
 import UserProfilePage from './pages/UserProfilePage';
 import ModeratorPage from './pages/ModeratorPage';
 import walletService from './services/walletService';
@@ -522,9 +521,6 @@ function App() {
 
 
 
-  const navigateToFeatures = () => {
-    setCurrentPage('features');
-  };
 
   const navigateToProfile = () => {
     setCurrentPage('profile');
@@ -632,7 +628,6 @@ function App() {
         currentPage={currentPage}
         navigateToHome={navigateToHome}
         navigateToForum={navigateToForum}
-        navigateToFeatures={navigateToFeatures}
         navigateToProfile={navigateToProfile}
         navigateToModerator={navigateToModerator}
         isModerator={isModerator}
@@ -690,13 +685,6 @@ function App() {
 
 
 
-      {currentPage === 'features' && (
-        <FeaturesPage 
-          isConnected={isConnected}
-          userAddress={userAddress}
-          walletType={walletType}
-        />
-      )}
 
              {currentPage === 'profile' && (
          <UserProfilePage 

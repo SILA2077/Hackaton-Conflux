@@ -24,21 +24,9 @@ function Footer() {
           
           <div className="footer-nav">
             <div className="footer-section">
-              <h4>Forum Categories</h4>
-              <ul>
-                <li><a href="#">General Discussion</a></li>
-                <li><a href="#">Development</a></li>
-                <li><a href="#">DeFi & Trading</a></li>
-                <li><a href="#">NFTs & Gaming</a></li>
-              </ul>
-            </div>
-            <div className="footer-section">
               <h4>Resources</h4>
               <ul>
-                <li><a href="https://confluxnetwork.org" target="_blank" rel="noopener noreferrer">Conflux Network</a></li>
-                <li><a href="https://docs.confluxnetwork.org" target="_blank" rel="noopener noreferrer">Documentation</a></li>
-                <li><a href="#">Forum Rules</a></li>
-                <li><a href="#">Help Center</a></li>
+                <li><a href="https://docs.confluxnetwork.org" target="_blank" rel="noopener noreferrer">Conflux Documentation</a></li>
               </ul>
             </div>
           </div>

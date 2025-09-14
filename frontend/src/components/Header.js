@@ -12,7 +12,6 @@ function Header({
   currentPage, 
   navigateToHome, 
   navigateToForum, 
-  navigateToFeatures, 
   navigateToProfile,
   navigateToModerator,
   isModerator,
@@ -33,7 +32,6 @@ function Header({
           <ul className="nav-list">
             <li><a href="#" className={`nav-link ${currentPage === 'home' ? 'active' : ''}`} onClick={navigateToHome}>Home</a></li>
             <li><a href="#" className={`nav-link ${currentPage === 'forum' ? 'active' : ''}`} onClick={navigateToForum}>Forum</a></li>
-            <li><a href="#" className={`nav-link ${currentPage === 'features' ? 'active' : ''}`} onClick={navigateToFeatures}>Features</a></li>
             {isConnected && (
               <li><a href="#" className={`nav-link ${currentPage === 'profile' ? 'active' : ''}`} onClick={navigateToProfile}>Profile</a></li>
             )}
