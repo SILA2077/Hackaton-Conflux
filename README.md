@@ -32,7 +32,7 @@ The **On-Chain Forum** is a revolutionary decentralized community platform that 
 - **Platform:** Conflux eSpace (EVM-compatible)
 - **Storage:** On-chain mapping-based storage with gas optimization
 - **Events:** Real-time event emission for frontend indexing
-- **Security:** Rate limiting, input validation, access control
+- **Security:** Rate limiting, input validation, access control 
 
 ### Frontend (React)
 - **Framework:** React 18 with modern hooks
