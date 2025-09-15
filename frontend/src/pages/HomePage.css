@@ -19,7 +19,8 @@
   z-index: 10;
   text-align: center;
   width: 100vw;
-  padding: 4rem 0 8rem 0;
+  padding: 12rem 0 8rem 0;
+  margin-top: 0;
 }
 
 .hero-content {
