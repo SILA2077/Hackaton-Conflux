@@ -271,12 +271,9 @@ hackaton-conflux/
 ## 🚀 Future Enhancements
 
 ### Planned Features
-- **IPFS Integration** - Store large content off-chain
-- **Token Gating** - NFT/token-based access control
-- **Advanced Moderation** - Automated content filtering
-- **Search Functionality** - Content search capabilities
-- **Media Support** - Image and file attachments
-- **Gas Sponsorship** - Free transactions for new users
+- **On-Chain Identity System** - All types of on-chain identity (People, industries, corporations, countries, etc.) linked to a second smart contract
+- **More Wallets** - Broader wallet compatibility for increased accessibility
+
 
 ### Scalability Improvements
 - **Layer 2 Integration** - Reduce transaction costs
